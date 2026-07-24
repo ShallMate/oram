@@ -1,0 +1,42 @@
+name: Fetch SP2024 oblivious sorting paper
+
+on:
+  push:
+    branches:
+      - chatgpt-oblivious-sorting-bundle-20260724
+    paths:
+      - ".github/workflows/fetch-sp2024-paper.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/fetch-sp2024-paper.yml"
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download and validate PDF
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          name="03_SP2024_Distributed_and_Scalable_Oblivious_Sorting_and_Shuffling.pdf"
+          curl --location --fail --silent --show-error --retry 3 \
+            --output "$name" \
+            "https://raw.githubusercontent.com/arturo-kong/IACR-eprint-mirror/master/2024/627.pdf"
+          python3 - "$name" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          data = p.read_bytes()
+          assert len(data) > 100_000 and data.startswith(b"%PDF-"), "invalid PDF"
+          print(f"Validated {p.name}: {len(data)} bytes")
+          PY
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: SP2024-Distributed-Scalable-Oblivious-Sorting
+          path: 03_SP2024_Distributed_and_Scalable_Oblivious_Sorting_and_Shuffling.pdf
+          retention-days: 7
+          compression-level: 0
