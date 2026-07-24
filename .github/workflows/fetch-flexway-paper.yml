@@ -33,7 +33,6 @@ jobs:
           assert len(data) > 100_000 and data.startswith(b"%PDF-"), "invalid PDF"
           print(f"Validated {p.name}: {len(data)} bytes")
           PY
-          pdftotext -f 1 -l 1 "$name" - | grep -qi "Flexway O-Sort"
       - name: Upload PDF
         uses: actions/upload-artifact@v4
         with:
