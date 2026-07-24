@@ -1,0 +1,13 @@
+No.	Venue	Year	Title	Status	Bytes	Source
+01	ACM CCS	2022	Efficient Secure Three-Party Sorting with Applications to Data Analysis and Heavy Hitters	DOWNLOADED	970195	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2022/1595.pdf
+02	ACM CCS	2023	Waks-On/Waks-Off: Fast Oblivious Offline/Online Shuffling and Sorting with Waksman Networks	DOWNLOADED	1543348	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2023/1236.pdf
+03	IEEE S&P	2024	Distributed & Scalable Oblivious Sorting and Shuffling	FAILED	0	
+04	ACM CCS	2024	Secure Sorting and Selection via Function Secret Sharing	DOWNLOADED	1387175	https://cs.idc.ac.il/~elette/Secure-kth-stats.pdf
+05	USENIX Security	2025	Flexway O-Sort: Enclave-Friendly and Optimal Oblivious Sorting	DOWNLOADED	3076119	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2023/1258.pdf
+06	USENIX Security	2025	Efficient Ranking, Order Statistics, and Sorting under CKKS	DOWNLOADED	448349	https://www.usenix.org/system/files/usenixsecurity25-mazzone.pdf
+07	ACM CCS	2025	Correlation-Aware Secure Sorting and Permutation for Iterative Two-Party Graph Analysis	FAILED	0	
+08	IEEE S&P	2021	PEGASUS: Bridging Polynomial and Non-polynomial Evaluations in Homomorphic Encryption	DOWNLOADED	707131	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2020/1606.pdf
+09	USENIX Security	2025	Engorgio: An Arbitrary-Precision Unbounded-Size Hybrid Encrypted Database via Quantized Fully Homomorphic Encryption	DOWNLOADED	1689896	https://www.usenix.org/system/files/usenixsecurity25-bian.pdf
+10	ASIACRYPT	2018	More is Less: Perfectly Secure Oblivious Algorithms in the Multi-server Setting	DOWNLOADED	446985	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2018/851.pdf
+11	EUROCRYPT	2020	OptORAMa: Optimal Oblivious RAM	DOWNLOADED	807828	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2018/892.pdf
+12	ASIACRYPT	2020	Secret-Shared Shuffle	DOWNLOADED	733763	https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2019/1340.pdf
