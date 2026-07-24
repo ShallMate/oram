@@ -1,0 +1,385 @@
+name: Build Oblivious Sorting paper bundle
+
+on:
+  push:
+    branches:
+      - chatgpt-oblivious-sorting-bundle-20260724
+    paths:
+      - ".github/workflows/build-oblivious-sorting-bundle.yml"
+      - "paper-bundle/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-oblivious-sorting-bundle.yml"
+      - "paper-bundle/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download, validate, and package papers
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          
+          ROOT="$GITHUB_WORKSPACE/bundle"
+          OUT="$GITHUB_WORKSPACE/bundle-output"
+          rm -rf "$ROOT" "$OUT"
+          mkdir -p \
+            "$ROOT/01_Core_Sorting" \
+            "$ROOT/02_Related_Systems" \
+            "$ROOT/03_Foundational_Primitives" \
+            "$OUT"
+          
+          REPORT="$ROOT/download_report.tsv"
+          printf 'No.\tVenue\tYear\tTitle\tStatus\tBytes\tSource\n' > "$REPORT"
+          
+          download_pdf() {
+            local no="$1"
+            local venue="$2"
+            local year="$3"
+            local title="$4"
+            local relpath="$5"
+            shift 5
+          
+            local dest="$ROOT/$relpath"
+            local tmp="${dest}.part"
+            local status="FAILED"
+            local used_url=""
+            local bytes="0"
+          
+            mkdir -p "$(dirname "$dest")"
+            rm -f "$tmp" "$dest"
+          
+            for url in "$@"; do
+              [[ -n "$url" ]] || continue
+              echo "::group::[$no] $title"
+              echo "Trying: $url"
+          
+              if curl \
+                --location \
+                --fail \
+                --silent \
+                --show-error \
+                --retry 4 \
+                --retry-delay 2 \
+                --retry-all-errors \
+                --connect-timeout 30 \
+                --max-time 360 \
+                --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36' \
+                --header 'Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8' \
+                --header 'Referer: https://dl.acm.org/' \
+                --output "$tmp" \
+                "$url"; then
+          
+                if python3 - "$tmp" <<'PY'
+          import pathlib
+          import sys
+          p = pathlib.Path(sys.argv[1])
+          data = p.read_bytes()
+          ok = len(data) >= 20_000 and b"%PDF-" in data[:1024]
+          raise SystemExit(0 if ok else 1)
+          PY
+                then
+                  mv "$tmp" "$dest"
+                  status="DOWNLOADED"
+                  used_url="$url"
+                  bytes="$(stat -c '%s' "$dest")"
+                  echo "Validated PDF: $bytes bytes"
+                  echo "::endgroup::"
+                  break
+                else
+                  echo "Downloaded content is not a valid PDF."
+                fi
+              fi
+          
+              rm -f "$tmp"
+              echo "::endgroup::"
+            done
+          
+            if [[ "$status" != "DOWNLOADED" ]]; then
+              rm -f "$tmp" "$dest"
+              {
+                echo "The PDF was not available from the public download URLs checked by this build."
+                echo "Publisher or final fallback page: ${!#}"
+              } > "${dest%.pdf}_NOT_DOWNLOADED.txt"
+            fi
+          
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+              "$no" "$venue" "$year" "$title" "$status" "$bytes" "$used_url" \
+              >> "$REPORT"
+          }
+          
+          download_pdf \
+            "01" "ACM CCS" "2022" \
+            "Efficient Secure Three-Party Sorting with Applications to Data Analysis and Heavy Hitters" \
+            "01_Core_Sorting/01_CCS2022_Efficient_Secure_Three-Party_Sorting.pdf" \
+            "https://eprint.iacr.org/2022/1595.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2022/1595.pdf" \
+            "https://dl.acm.org/doi/pdf/10.1145/3548606.3560691"
+          
+          download_pdf \
+            "02" "ACM CCS" "2023" \
+            "Waks-On/Waks-Off: Fast Oblivious Offline/Online Shuffling and Sorting with Waksman Networks" \
+            "01_Core_Sorting/02_CCS2023_Waks-On_Waks-Off.pdf" \
+            "https://eprint.iacr.org/2023/1236.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2023/1236.pdf" \
+            "https://dl.acm.org/doi/pdf/10.1145/3576915.3623133"
+          
+          download_pdf \
+            "03" "IEEE S&P" "2024" \
+            "Distributed & Scalable Oblivious Sorting and Shuffling" \
+            "01_Core_Sorting/03_SP2024_Distributed_and_Scalable_Oblivious_Sorting_and_Shuffling.pdf" \
+            "https://eprint.iacr.org/2024/627.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2024/627.pdf" \
+            "https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10646663"
+          
+          download_pdf \
+            "04" "ACM CCS" "2024" \
+            "Secure Sorting and Selection via Function Secret Sharing" \
+            "01_Core_Sorting/04_CCS2024_Secure_Sorting_and_Selection_via_FSS.pdf" \
+            "https://cs.idc.ac.il/~elette/Secure-kth-stats.pdf" \
+            "https://dl.acm.org/doi/pdf/10.1145/3658644.3690359"
+          
+          download_pdf \
+            "05" "USENIX Security" "2025" \
+            "Flexway O-Sort: Enclave-Friendly and Optimal Oblivious Sorting" \
+            "01_Core_Sorting/05_USENIX2025_Flexway_O-Sort.pdf" \
+            "https://eprint.iacr.org/2023/1258.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2023/1258.pdf" \
+            "https://www.usenix.org/system/files/usenixsecurity25-gu-tianyao.pdf"
+          
+          download_pdf \
+            "06" "USENIX Security" "2025" \
+            "Efficient Ranking, Order Statistics, and Sorting under CKKS" \
+            "01_Core_Sorting/06_USENIX2025_CKKS_Ranking_Order_Statistics_and_Sorting.pdf" \
+            "https://www.usenix.org/system/files/usenixsecurity25-mazzone.pdf" \
+            "https://arxiv.org/pdf/2412.15126"
+          
+          download_pdf \
+            "07" "ACM CCS" "2025" \
+            "Correlation-Aware Secure Sorting and Permutation for Iterative Two-Party Graph Analysis" \
+            "01_Core_Sorting/07_CCS2025_Correlation-Aware_Secure_Sorting_and_Permutation.pdf" \
+            "https://dl.acm.org/doi/pdf/10.1145/3719027.3765050" \
+            "https://dl.acm.org/doi/pdf/10.1145/3719027.3765050?download=true" \
+            "https://dl.acm.org/doi/10.1145/3719027.3765050"
+          
+          download_pdf \
+            "08" "IEEE S&P" "2021" \
+            "PEGASUS: Bridging Polynomial and Non-polynomial Evaluations in Homomorphic Encryption" \
+            "02_Related_Systems/08_SP2021_PEGASUS.pdf" \
+            "https://eprint.iacr.org/2020/1606.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2020/1606.pdf" \
+            "https://ieeexplore.ieee.org/iel7/9519381/9519382/09519408.pdf"
+          
+          download_pdf \
+            "09" "USENIX Security" "2025" \
+            "Engorgio: An Arbitrary-Precision Unbounded-Size Hybrid Encrypted Database via Quantized Fully Homomorphic Encryption" \
+            "02_Related_Systems/09_USENIX2025_Engorgio.pdf" \
+            "https://www.usenix.org/system/files/usenixsecurity25-bian.pdf" \
+            "https://www.usenix.org/system/files/sec25-prepub-342-bian.pdf"
+          
+          download_pdf \
+            "10" "ASIACRYPT" "2018" \
+            "More is Less: Perfectly Secure Oblivious Algorithms in the Multi-server Setting" \
+            "03_Foundational_Primitives/10_ASIACRYPT2018_More_is_Less.pdf" \
+            "https://eprint.iacr.org/2018/851.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2018/851.pdf" \
+            "https://arxiv.org/pdf/1809.00825"
+          
+          download_pdf \
+            "11" "EUROCRYPT" "2020" \
+            "OptORAMa: Optimal Oblivious RAM" \
+            "03_Foundational_Primitives/11_EUROCRYPT2020_OptORAMa.pdf" \
+            "https://eprint.iacr.org/2018/892.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2018/892.pdf"
+          
+          download_pdf \
+            "12" "ASIACRYPT" "2020" \
+            "Secret-Shared Shuffle" \
+            "03_Foundational_Primitives/12_ASIACRYPT2020_Secret-Shared_Shuffle.pdf" \
+            "https://eprint.iacr.org/2019/1340.pdf" \
+            "https://raw.githubusercontent.com/ShallMate/IACR-eprint-mirror/master/2019/1340.pdf"
+          
+          cat > "$ROOT/README_CN.md" <<'EOF'
+          # Oblivious Sorting / Secure Sorting 论文包
+          
+          本压缩包收录 2018–2025 年在 IEEE S&P、USENIX Security、ACM CCS、ASIACRYPT 和 EUROCRYPT 发表的 Oblivious Sorting、Secure Sorting 及其直接基础原语论文。
+          
+          - `01_Core_Sorting/`：以 oblivious/secure sorting 为主要贡献的论文。
+          - `02_Related_Systems/`：将排序作为重要技术组件的系统或 FHE 工作。
+          - `03_Foundational_Primitives/`：compaction、ORAM、secret-shared shuffle 等直接基础工作。
+          - `download_report.tsv`：每篇论文的下载状态和实际来源。
+          - `SHA256SUMS.txt`：PDF 文件完整性校验值。
+          - `oblivious_sorting.bib`：BibTeX 条目。
+          
+          所有 PDF 均从公开作者版本、IACR ePrint、USENIX Open Access、arXiv 或公开出版商链接下载，并在打包前验证 PDF 文件头和最小文件长度。若某篇论文没有可公开获取的 PDF，则对应目录中保留 `_NOT_DOWNLOADED.txt` 说明和出版商页面。
+          EOF
+          
+          cat > "$ROOT/oblivious_sorting.bib" <<'EOF'
+          @inproceedings{asharov2022secure3sort,
+            title={Efficient Secure Three-Party Sorting with Applications to Data Analysis and Heavy Hitters},
+            author={Asharov, Gilad and Hamada, Koki and Ikarashi, Dai and Kikuchi, Ryo and Nof, Ariel and Pinkas, Benny and Takahashi, Katsumi and Tomida, Junichi},
+            booktitle={ACM CCS},
+            year={2022},
+            doi={10.1145/3548606.3560691}
+          }
+          
+          @inproceedings{sasy2023wakson,
+            title={Waks-On/Waks-Off: Fast Oblivious Offline/Online Shuffling and Sorting with Waksman Networks},
+            author={Sasy, Sajin and Johnson, Aaron and Goldberg, Ian},
+            booktitle={ACM CCS},
+            year={2023},
+            doi={10.1145/3576915.3623133}
+          }
+          
+          @inproceedings{ngai2024distributed,
+            title={Distributed \& Scalable Oblivious Sorting and Shuffling},
+            author={Ngai, Nicholas and Demertzis, Ioannis and Chamani, Javad Ghareh and Papadopoulos, Dimitrios},
+            booktitle={IEEE Symposium on Security and Privacy},
+            year={2024},
+            doi={10.1109/SP54263.2024.00153}
+          }
+          
+          @inproceedings{agarwal2024fsssorting,
+            title={Secure Sorting and Selection via Function Secret Sharing},
+            author={Agarwal, Amit and Boyle, Elette and Chandran, Nishanth and Gilboa, Niv and Gupta, Divya and Ishai, Yuval and Kelkar, Mahimna and Ma, Yiping},
+            booktitle={ACM CCS},
+            year={2024},
+            doi={10.1145/3658644.3690359}
+          }
+          
+          @inproceedings{gu2025flexway,
+            title={Flexway O-Sort: Enclave-Friendly and Optimal Oblivious Sorting},
+            author={Gu, Tianyao and Wang, Yilei and Tinoco, Afonso and Chen, Bingnan and Yi, Ke and Shi, Elaine},
+            booktitle={USENIX Security Symposium},
+            year={2025}
+          }
+          
+          @inproceedings{mazzone2025ckkssorting,
+            title={Efficient Ranking, Order Statistics, and Sorting under CKKS},
+            author={Mazzone, Federico and Everts, Maarten and Hahn, Florian and Peter, Andreas},
+            booktitle={USENIX Security Symposium},
+            year={2025}
+          }
+          
+          @inproceedings{chen2025correlation,
+            title={Correlation-Aware Secure Sorting and Permutation for Iterative Two-Party Graph Analysis},
+            author={Chen, Yunyi and Yu, Jiping and Chen, Kun and Fan, Xiaoyu and Zhu, Xiaowei and Chen, Wenguang},
+            booktitle={ACM CCS},
+            year={2025},
+            doi={10.1145/3719027.3765050}
+          }
+          
+          @inproceedings{lu2021pegasus,
+            title={PEGASUS: Bridging Polynomial and Non-polynomial Evaluations in Homomorphic Encryption},
+            author={Lu, Wen-jie and Huang, Zhicong and Hong, Cheng and Ma, Yiping and Qu, Hunter},
+            booktitle={IEEE Symposium on Security and Privacy},
+            year={2021},
+            doi={10.1109/SP40001.2021.00043}
+          }
+          
+          @inproceedings{bian2025engorgio,
+            title={Engorgio: An Arbitrary-Precision Unbounded-Size Hybrid Encrypted Database via Quantized Fully Homomorphic Encryption},
+            author={Bian, Song and Pan, Haowen and Hu, Jiaqi and Zhang, Zhou and Fu, Yunhao and Hua, Jiafeng and Chen, Yunyi and Zhang, Bo and Jin, Yier and Dong, Jin and Guan, Zhenyu},
+            booktitle={USENIX Security Symposium},
+            year={2025}
+          }
+          
+          @inproceedings{chan2018more,
+            title={More is Less: Perfectly Secure Oblivious Algorithms in the Multi-server Setting},
+            author={Chan, T.-H. Hubert and Katz, Jonathan and Nayak, Kartik and Polychroniadou, Antigoni and Shi, Elaine},
+            booktitle={ASIACRYPT},
+            year={2018}
+          }
+          
+          @inproceedings{asharov2020optorama,
+            title={OptORAMa: Optimal Oblivious RAM},
+            author={Asharov, Gilad and Komargodski, Ilan and Lin, Wei-Kai and Nayak, Kartik and Peserico, Enoch and Shi, Elaine},
+            booktitle={EUROCRYPT},
+            year={2020}
+          }
+          
+          @inproceedings{chase2020secretsharedshuffle,
+            title={Secret-Shared Shuffle},
+            author={Chase, Melissa and Ghosh, Esha and Poburinnaya, Oxana},
+            booktitle={ASIACRYPT},
+            year={2020}
+          }
+          EOF
+          
+          (
+            cd "$ROOT"
+            find . -type f -name '*.pdf' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          
+          PDF_COUNT="$(find "$ROOT" -type f -name '*.pdf' | wc -l | tr -d ' ')"
+          PLACEHOLDER_COUNT="$(find "$ROOT" -type f -name '*_NOT_DOWNLOADED.txt' | wc -l | tr -d ' ')"
+          
+          {
+            echo "pdf_count=$PDF_COUNT"
+            echo "placeholder_count=$PLACEHOLDER_COUNT"
+          } > "$OUT/build_status.txt"
+          
+          (
+            cd "$ROOT"
+            zip -r -9 "$OUT/Oblivious_Sorting_Papers_2018-2025.zip" .
+          )
+          
+          cp "$REPORT" "$OUT/download_report.tsv"
+          cp "$ROOT/README_CN.md" "$OUT/README_CN.md"
+          
+          echo "Downloaded PDFs: $PDF_COUNT"
+          echo "Unavailable PDFs: $PLACEHOLDER_COUNT"
+          ls -lh "$OUT/Oblivious_Sorting_Papers_2018-2025.zip"
+
+      - name: Upload ready-to-download archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: Oblivious_Sorting_Papers_2018-2025
+          path: bundle/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 9
+
+      - name: Publish archive on the temporary branch
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p published
+          cp bundle-output/Oblivious_Sorting_Papers_2018-2025.zip published/
+          cp bundle-output/download_report.tsv published/
+          cp bundle-output/README_CN.md published/
+          cp bundle-output/build_status.txt published/
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add published/
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "Add ready-to-download Oblivious Sorting paper bundle [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Check bundle completeness
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source bundle-output/build_status.txt
+          if [[ "$pdf_count" -lt 11 ]]; then
+            echo "Only $pdf_count of 12 PDFs were downloaded; expected at least 11 public PDFs."
+            exit 1
+          fi

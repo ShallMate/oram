@@ -1,0 +1,2 @@
+pdf_count=10
+placeholder_count=2
