@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import csv, hashlib, json, os, pathlib, re, shutil, subprocess, sys, time, zipfile
+import csv, hashlib, json, os, pathlib, re, shutil, subprocess, time, zipfile
 
 ROOT_NAME = "PCG_PCF_papers_2016-2026_2026-07-30"
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -36,11 +36,28 @@ def valid_pdf(p:pathlib.Path) -> tuple[bool,int]:
     except Exception:
         return False,0
 
+cypher_cache:dict[tuple[str,str],list[str]]={}
+def cypherpunks_versions(y:str,n:str) -> list[str]:
+    key=(y,n)
+    if key in cypher_cache:
+        return cypher_cache[key]
+    base=f"https://www.eprint.mirror.cypherpunks.su/{y}/{n}/"
+    cmd=["curl","-L","-f","-sS","--retry","1","--connect-timeout","15","--max-time","45","-A","Mozilla/5.0",base]
+    try:
+        html=subprocess.check_output(cmd,text=True,errors="replace")
+        names=set(re.findall(r'href=["\']([0-9]+\.pdf)["\']',html,re.I))
+        urls=[base+name for name in sorted(names,key=lambda x:int(x[:-4]),reverse=True)]
+    except Exception:
+        urls=[]
+    cypher_cache[key]=urls
+    return urls
+
 def candidate_urls(r:dict[str,str]) -> list[str]:
     urls=[u for u in r["extra_urls"].split(";;") if u]
     m=re.fullmatch(r"ePrint (\d{4})/(\d+)",r["identifier"])
     if m:
         y,n=m.groups()
+        urls += cypherpunks_versions(y,n)
         urls += [
             f"https://eprint.iacr.org/{y}/{n}.pdf",
             f"https://ia.cr/{y}/{n}.pdf",
@@ -52,10 +69,10 @@ def download(url:str,dest:pathlib.Path) -> bool:
     tmp=dest.with_suffix(dest.suffix+".part")
     tmp.parent.mkdir(parents=True,exist_ok=True)
     tmp.unlink(missing_ok=True)
-    cmd=["curl","-L","-f","-sS","--retry","4","--retry-delay","2","--retry-all-errors",
-         "--connect-timeout","30","--max-time","420","-A","Mozilla/5.0","-H","Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8","-o",str(tmp),url]
+    cmd=["curl","-L","-f","-sS","--retry","1","--retry-delay","1","--retry-all-errors",
+         "--connect-timeout","15","--max-time","90","-A","Mozilla/5.0","-H","Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8","-o",str(tmp),url]
     if subprocess.run(cmd).returncode==0:
-        ok,pages=valid_pdf(tmp)
+        ok,_=valid_pdf(tmp)
         if ok:
             tmp.replace(dest)
             return True
