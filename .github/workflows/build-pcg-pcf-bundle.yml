@@ -21,9 +21,7 @@ jobs:
       - name: Install validators
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils qpdf zip
       - name: Build verified archive
-        run: |
-          sed -i 's/"--retry","4"/"--retry","1"/; s/"--connect-timeout","30"/"--connect-timeout","15"/; s/"--max-time","420"/"--max-time","60"/' paper-bundle-pcg/build_bundle.py
-          python3 paper-bundle-pcg/build_bundle.py
+        run: python3 paper-bundle-pcg/build_bundle.py
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
@@ -32,4 +30,4 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-# Temporary artifact build only; do not merge.
+# Temporary artifact build only; versioned ePrint mirror fallback enabled.
