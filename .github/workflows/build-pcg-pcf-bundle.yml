@@ -1,0 +1,31 @@
+name: Build PCG-PCF paper bundle
+
+on:
+  push:
+    branches: [chatgpt-pcg-pcf-bundle-20260730]
+    paths: [".github/workflows/build-pcg-pcf-bundle.yml", "paper-bundle-pcg/**"]
+  pull_request:
+    branches: [main]
+    paths: [".github/workflows/build-pcg-pcf-bundle.yml", "paper-bundle-pcg/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install validators
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils qpdf zip
+      - name: Build verified archive
+        run: python3 paper-bundle-pcg/build_bundle.py
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCG-PCF-papers-2016-2026
+          path: output/PCG_PCF_papers_2016-2026_2026-07-30.zip
+          if-no-files-found: error
+          retention-days: 7
